@@ -18,39 +18,52 @@ const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER
 console.log('🌍 Environment:', isProduction ? 'PRODUCTION' : 'DEVELOPMENT');
 console.log('🔑 ScraperAPI:', apiKey ? '✅ Configured' : '⚠️ Not configured (will try direct requests)');
 
-// Enhanced axios configuration
+// Enhanced axios configuration with better anti-bot headers
 const createAxiosConfig = {
-  timeout: 15000,
+  timeout: 20000,
   headers: {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-    'Accept-Language': 'en-US,en;q=0.5',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+    'Accept-Language': 'en-US,en;q=0.9,en;q=0.8',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Referer': 'https://manhwaz.com/',
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': 'none',
+    'Sec-Fetch-User': '?1',
+    'Sec-Ch-Ua': '"Not A(Brand";v="99", "Google Chrome";v="130", "Chromium";v="130"',
+    'Sec-Ch-Ua-Mobile': '?0',
+    'Sec-Ch-Ua-Platform': '"Windows"',
     'Cache-Control': 'no-cache',
     'Pragma': 'no-cache'
   }
 };
 
-// Retry logic
-const fetchWithRetry = async (url, maxRetries = 2) => {
-  console.log(`🌐 Fetching: ${url}`);
+// Retry logic with exponential backoff
+const fetchWithRetry = async (url, maxRetries = null) => {
+  const retries = maxRetries || (isProduction ? 4 : 2);
+  console.log(`🌐 Fetching: ${url} (${retries} attempts)`);
 
-  for (let i = 0; i < maxRetries; i++) {
+  for (let i = 0; i < retries; i++) {
     try {
       const response = await axios.get(url, createAxiosConfig);
       if (response.status === 200 && response.data) {
-        console.log(`✅ Success: ${url}`);
+        console.log(`✅ Success on attempt ${i + 1}: ${url}`);
         return response;
       }
     } catch (error) {
-      console.log(`❌ Attempt ${i + 1} failed: ${error.message}`);
-      if (i < maxRetries - 1) {
-        const delay = Math.pow(2, i) * 1000;
+      const errorMsg = error.response?.status ? `${error.response.status}` : error.message;
+      console.log(`❌ Attempt ${i + 1}/${retries} failed: ${errorMsg}`);
+
+      if (i < retries - 1) {
+        const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
+        console.log(`⏳ Waiting ${Math.round(delay)}ms before retry...`);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
   }
 
-  throw new Error(`Failed to fetch ${url} after ${maxRetries} attempts`);
+  throw new Error(`Failed to fetch ${url} after ${retries} attempts`);
 };
 
 // Utility functions
