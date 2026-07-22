@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import axios from 'axios';
-import cheerio from 'cheerio';
+import { load as cheerioLoad } from 'cheerio';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -55,7 +55,7 @@ async function scrapeManhwaz(page = 1, sort = 'popular') {
     if (page > 1) url = `${url}/page/${page}`;
 
     const response = await axios.get(url, createAxiosConfig);
-    const $ = cheerio.load(response.data);
+    const $ = cheerioLoad(response.data);
     const manhwas = [];
     const seen = new Set();
 
@@ -101,7 +101,7 @@ async function scrapeAsuraScans(page = 1, sort = 'popular') {
     if (page > 1) url = `${url}?page=${page}`;
 
     const response = await axios.get(url, createAxiosConfig);
-    const $ = cheerio.load(response.data);
+    const $ = cheerioLoad(response.data);
     const manhwas = [];
     const seen = new Set();
 
