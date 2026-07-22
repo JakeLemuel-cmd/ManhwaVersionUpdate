@@ -420,37 +420,68 @@ const createHtmlList = (items, title) => `
         margin-bottom: 20px;
         font-size: 13px;
       }
-      .list { display: grid; gap: 15px; }
+      .list { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
       .item {
         background: #1a1a1a;
-        padding: 15px;
-        border-radius: 6px;
-        transition: background 0.2s;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
+        border-radius: 8px;
+        overflow: hidden;
+        transition: transform 0.2s, box-shadow 0.2s;
       }
-      .item:hover { background: #222; }
-      .item-content { flex: 1; }
+      .item:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 16px rgba(74, 158, 255, 0.2);
+      }
+      .item-cover {
+        width: 100%;
+        height: 280px;
+        background: #2a2a2a;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .item-cover img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .item-content {
+        padding: 15px;
+      }
       .item a {
         color: #e0e0e0;
         text-decoration: none;
         font-size: 16px;
+        font-weight: 500;
         transition: color 0.2s;
+        display: block;
+        word-break: break-word;
       }
       .item a:hover { color: #4a9eff; }
-      .item-meta { color: #666; font-size: 12px; margin-top: 5px; }
+      .item-meta { color: #666; font-size: 12px; margin-top: 8px; }
       .empty {
         text-align: center;
         color: #666;
         padding: 40px;
       }
-      @media (max-width: 600px) {
+      @media (max-width: 1024px) {
+        .list { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; }
+        .item-cover { height: 220px; }
+      }
+      @media (max-width: 768px) {
         .container { padding: 15px; }
         h1 { font-size: 22px; }
         .nav-content { gap: 10px; }
         .nav a { font-size: 14px; }
-        .item { flex-direction: column; align-items: flex-start; }
+        .list { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+        .item-cover { height: 200px; }
+        .item-content { padding: 10px; }
+      }
+      @media (max-width: 480px) {
+        .list { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+        .item-cover { height: 160px; }
+        .item-content { padding: 8px; }
+        .item a { font-size: 14px; }
       }
     </style>
   </head>
@@ -471,12 +502,18 @@ const createHtmlList = (items, title) => `
       <div class="list">
         ${items.length
           ? items.map((item, i) => `
-              <div class="item">
-                <div class="item-content">
-                  <a href="/manhwa/${item.slug}">${i + 1}. ${item.title}</a>
-                  <div class="item-meta">${item.slug}</div>
+              <a href="/manhwa/${item.slug}" class="item" title="${item.title}">
+                <div class="item-cover">
+                  ${item.cover
+                    ? `<img src="${item.cover}" alt="${item.title}" loading="lazy" />`
+                    : '<div style="color: #666; font-size: 48px;">📖</div>'
+                  }
                 </div>
-              </div>
+                <div class="item-content">
+                  <div>${item.title}</div>
+                  <div class="item-meta">#${i + 1}</div>
+                </div>
+              </a>
             `).join('')
           : '<div class="empty">📭 No items found</div>'
         }
