@@ -12,11 +12,11 @@ const baseURL = 'https://manhwaz.com';
 const PORT = process.env.PORT || 5000;
 
 // Environment setup
-const apiKey = process.env.SCRAPER_API_KEY || process.env.SCRAPERAPI_KEY || process.env.API_KEY;
+const scraperApiKey = process.env.SCRAPER_API_KEY || process.env.SCRAPERAPI_KEY || process.env.API_KEY;
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER || !process.env.NODE_ENV;
 
 console.log('🌍 Environment:', isProduction ? 'PRODUCTION' : 'DEVELOPMENT');
-console.log('🔑 ScraperAPI:', apiKey ? '✅ Configured' : '⚠️ Not configured (will try direct requests)');
+console.log('🔑 ScraperAPI:', scraperApiKey ? '✅ Configured' : '⚠️ Not configured');
 
 // Enhanced axios configuration with better anti-bot headers
 const createAxiosConfig = {
@@ -39,11 +39,63 @@ const createAxiosConfig = {
   }
 };
 
+// Fetch with ScraperAPI for production, direct for development
+const fetchWithScraperAPI = async (url) => {
+  if (!scraperApiKey) {
+    throw new Error('ScraperAPI key not configured');
+  }
+
+  console.log(`🔄 Using ScraperAPI for: ${url}`);
+
+  try {
+    const response = await axios.get('http://api.scraperapi.com', {
+      params: {
+        api_key: scraperApiKey,
+        url: url,
+        render: false,
+        country_code: 'us'
+      },
+      timeout: 30000
+    });
+
+    if (response.status === 200 && response.data) {
+      console.log(`✅ ScraperAPI success: ${url}`);
+      return response;
+    }
+
+    throw new Error(`ScraperAPI returned status ${response.status}`);
+  } catch (error) {
+    const errorMsg = error.response?.status ? `${error.response.status}` : error.message;
+    console.error(`❌ ScraperAPI error: ${errorMsg}`);
+    throw new Error(`ScraperAPI failed: ${errorMsg}`);
+  }
+};
+
 // Retry logic with exponential backoff
 const fetchWithRetry = async (url, maxRetries = null) => {
-  const retries = maxRetries || (isProduction ? 4 : 2);
-  console.log(`🌐 Fetching: ${url} (${retries} attempts)`);
+  const retries = maxRetries || (isProduction ? 3 : 2);
+  console.log(`🌐 Fetching: ${url} (using ${isProduction && scraperApiKey ? 'ScraperAPI' : 'direct'} - ${retries} attempts)`);
 
+  // In production with ScraperAPI, use it primarily
+  if (isProduction && scraperApiKey) {
+    for (let i = 0; i < retries; i++) {
+      try {
+        return await fetchWithScraperAPI(url);
+      } catch (error) {
+        console.log(`❌ ScraperAPI attempt ${i + 1}/${retries} failed: ${error.message}`);
+
+        if (i < retries - 1) {
+          const delay = Math.pow(2, i) * 1000;
+          console.log(`⏳ Waiting ${delay}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
+
+    throw new Error(`Failed to fetch ${url} after ${retries} ScraperAPI attempts`);
+  }
+
+  // In development or without ScraperAPI, use direct requests
   for (let i = 0; i < retries; i++) {
     try {
       const response = await axios.get(url, createAxiosConfig);
