@@ -1,67 +1,77 @@
-# Manhwa Backend API v2.0.0
+# Manhwa App Version Server
 
-Modern, production-ready backend scraper for Manhwaz and AsuraScans.
+Real-time app update version service deployed on Vercel. No sleeping, always available.
 
 ## Features
 
-- 100+ items per source
-- Search functionality
-- Filter by popular/latest
-- Smart 1-hour caching
-- Production ready
+✅ Serverless (no server sleeping)
+✅ Real-time updates
+✅ CORS enabled
+✅ Auto-deploy on push
+✅ Free tier available
 
-## Quick Start
+## Endpoints
 
-```bash
-npm install
-npm start
-```
-
-## API Endpoints
-
-- `GET /api/popular?source=all&limit=100`
-- `GET /api/latest?source=all&limit=100`
-- `GET /api/trending?source=all&limit=100`
-- `GET /api/search?q=query`
-- `GET /api/filter?q=query&sort=popular`
-- `GET /api/health`
-
-## Deploy to Render
-
-1. Push to GitHub
-2. Connect Render to repo
-3. Set build: `npm install`
-4. Set start: `npm start`
-5. Deploy!
-
-URL will be: `https://your-app.onrender.com`
-
-## Environment
-
-Create `.env`:
-```
-PORT=5000
-NODE_ENV=production
-```
+- `GET /api/version` - Get current app version and download URL
+- `GET /api/health` - Health check endpoint
 
 ## Response Format
 
 ```json
 {
-  "success": true,
-  "data": [
-    {
-      "id": "manhwaz_0",
-      "source": "manhwaz",
-      "title": "Title",
-      "slug": "slug",
-      "url": "https://...",
-      "cover": "https://..."
-    }
-  ],
-  "count": 100
+  "version": "1.0.1",
+  "downloadUrl": "https://drive.google.com/uc?export=download&id=YOUR_APK_ID",
+  "releaseNotes": "Bug fixes and improvements"
 }
 ```
 
-Version: 2.0.0  
-Status: ✅ Ready to Deploy
+## Deploy to Vercel
+
+### 1. Install Vercel CLI
+```bash
+npm install -g vercel
+```
+
+### 2. Login to Vercel
+```bash
+vercel login
+```
+
+### 3. Deploy
+```bash
+vercel
+```
+
+### 4. Get Your URL
+After deployment, Vercel will give you a URL like:
+```
+https://your-project.vercel.app/api/version
+```
+
+## Update Version
+
+Edit `/api/version.js` and change:
+```javascript
+version: "1.0.2"  // Update this
+downloadUrl: "https://drive.google.com/uc?export=download&id=YOUR_APK_ID"
+```
+
+Then commit and push:
+```bash
+git add .
+git commit -m "Update app version to 1.0.2"
+git push
+```
+
+Vercel will auto-deploy! ✅
+
+## Local Testing
+
+```bash
+npm install -g vercel
+vercel dev
+```
+
+Then test: `http://localhost:3000/api/version`
+
+Status: ✅ Ready to Deploy to Vercel
