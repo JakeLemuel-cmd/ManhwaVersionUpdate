@@ -52,7 +52,7 @@ const fetchWithScraperAPI = async (url) => {
       params: {
         api_key: scraperApiKey,
         url: url,
-        render: false,
+        render: true,
         country_code: 'us'
       },
       timeout: 30000
