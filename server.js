@@ -332,38 +332,70 @@ const fetchManhwaDetails = async (slug) => {
         );
 
         const chapters = [];
-        $('.wp-manga-chapter').each((index, el) => {
-          const chapterTitle = cleanText($(el).find('a').text());
-          const chapterLink = $(el).find('a').attr('href');
 
-          // Try to extract date/timestamp from various selectors
-          let date = '';
-          const dateSelectors = [
-            '.chapter-release-date',
-            '.post-on',
-            '.chapter-date',
-            '.release-date',
-            'span[class*="date"]',
-            'span[class*="time"]'
-          ];
+        // Try multiple selectors for chapters (fallback chain)
+        const chapterSelectors = [
+          '.wp-manga-chapter',      // WordPress standard
+          '.chapter-item',            // Generic
+          '.chapter-link',            // Alternative
+          '.manga-chapter',           // Manga generic
+          'li[data-chapter]',         // Data attribute
+          'a[href*="/chapter/"]',     // Chapter URL pattern
+          '.row.item-chapter'         // Row-based
+        ];
 
-          for (const selector of dateSelectors) {
-            const dateText = cleanText($(el).find(selector).text());
-            if (dateText && dateText.length > 0) {
-              date = dateText;
+        let chaptersFound = false;
+
+        for (const selector of chapterSelectors) {
+          const items = $(selector);
+          console.log(`🔍 Chapter selector "${selector}": found ${items.length} items`);
+
+          if (items.length > 0) {
+            items.each((index, el) => {
+              const chapterTitle = cleanText($(el).find('a').text()) || cleanText($(el).text());
+              const chapterLink = $(el).find('a').attr('href') || $(el).attr('href');
+
+              // Try to extract date/timestamp from various selectors
+              let date = '';
+              const dateSelectors = [
+                '.chapter-release-date',
+                '.post-on',
+                '.chapter-date',
+                '.release-date',
+                'span[class*="date"]',
+                'span[class*="time"]',
+                '.manga-date'
+              ];
+
+              for (const dateSelector of dateSelectors) {
+                const dateText = cleanText($(el).find(dateSelector).text());
+                if (dateText && dateText.length > 0) {
+                  date = dateText;
+                  break;
+                }
+              }
+
+              if (chapterTitle && chapterLink) {
+                chapters.push({
+                  id: `chapter_${index}`,
+                  chapterTitle,
+                  chapterLink: chapterLink.startsWith('http') ? chapterLink : baseURL + chapterLink,
+                  date: date || 'Unknown'
+                });
+              }
+            });
+
+            if (chapters.length > 0) {
+              chaptersFound = true;
+              console.log(`✅ Successfully extracted ${chapters.length} chapters using selector: "${selector}"`);
               break;
             }
           }
+        }
 
-          if (chapterTitle && chapterLink) {
-            chapters.push({
-              id: `chapter_${index}`,
-              chapterTitle,
-              chapterLink: chapterLink.startsWith('http') ? chapterLink : baseURL + chapterLink,
-              date: date || 'Unknown'
-            });
-          }
-        });
+        if (!chaptersFound) {
+          console.warn(`⚠️ No chapters found with any selector! HTML might have changed.`);
+        }
 
         console.log(`✅ Found details for: ${title}`);
         return { title, cover, description, chapters };
@@ -923,6 +955,85 @@ app.get('/debug/selectors', async (req, res) => {
         });
       }
     });
+
+    res.json(debug);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Debug endpoint - check chapter selectors
+app.get('/debug/chapters/:slug', async (req, res) => {
+  try {
+    const { slug } = req.params;
+    console.log(`🔍 Checking chapter selectors for slug: ${slug}`);
+
+    const urls = [
+      `${baseURL}/webtoon/${slug}`,
+      `${baseURL}/manhwa/${slug}`,
+      `${baseURL}/${slug}`
+    ];
+
+    let successUrl = null;
+    let $;
+
+    for (const url of urls) {
+      try {
+        const response = await fetchWithRetry(url);
+        $ = cheerioLoad(response.data);
+        successUrl = url;
+        break;
+      } catch (error) {
+        console.log(`⚠️ Failed to fetch ${url}`);
+      }
+    }
+
+    if (!$) {
+      throw new Error('Could not fetch any URL for this slug');
+    }
+
+    const chapterSelectors = [
+      '.wp-manga-chapter',
+      '.chapter-item',
+      '.chapter-link',
+      '.manga-chapter',
+      'li[data-chapter]',
+      'a[href*="/chapter/"]',
+      '.row.item-chapter'
+    ];
+
+    const debug = {
+      slug,
+      successUrl,
+      chapterSelectors: {},
+      sampleChapters: []
+    };
+
+    for (const selector of chapterSelectors) {
+      const count = $(selector).length;
+      debug.chapterSelectors[selector] = count;
+      console.log(`  ${selector}: ${count} items`);
+    }
+
+    // Get first 3 chapters from best-matching selector
+    for (const selector of chapterSelectors) {
+      const items = $(selector).slice(0, 3);
+      if (items.length > 0) {
+        items.each((index, el) => {
+          const title = cleanText($(el).find('a').text()) || cleanText($(el).text());
+          const link = $(el).find('a').attr('href') || $(el).attr('href');
+          if (title && link) {
+            debug.sampleChapters.push({
+              index,
+              title: title.substring(0, 60),
+              link: link.substring(0, 80),
+              selector
+            });
+          }
+        });
+        if (debug.sampleChapters.length > 0) break;
+      }
+    }
 
     res.json(debug);
   } catch (error) {
