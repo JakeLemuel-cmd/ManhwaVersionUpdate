@@ -8,10 +8,7 @@
   );
 };
 
-const toPositiveInt = (value, fallback) => {
-  const parsed = Number.parseInt(String(value ?? '').trim(), 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-};
+const isEnabled = () => String(process.env.APP_ENABLED || 'true').trim().toLowerCase() !== 'false';
 
 export default function handler(req, res) {
   setCorsHeaders(res);
@@ -26,11 +23,14 @@ export default function handler(req, res) {
     return;
   }
 
+  const enabled = isEnabled();
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.status(200).json({
-    version: process.env.APP_VERSION || '1.0.2',
-    versionCode: toPositiveInt(process.env.APP_VERSION_CODE, 3),
-    downloadUrl: process.env.APK_DOWNLOAD_URL || 'https://drive.google.com/uc?export=download&id=YOUR_APK_ID',
-    releaseNotes: process.env.RELEASE_NOTES || 'Bug fixes and improvements'
+    success: true,
+    enabled,
+    message: enabled
+      ? (process.env.APP_ENABLED_MESSAGE || 'App is available.')
+      : (process.env.APP_DISABLED_MESSAGE || 'This app is currently disabled. Please try again later.'),
+    updatedAt: process.env.APP_CONTROL_UPDATED_AT || null
   });
 }
